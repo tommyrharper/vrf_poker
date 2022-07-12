@@ -8,7 +8,23 @@ const NUM_DRAWS : u8 = 8;
 const NUM_CARDS : u16 = 52;
 
 fn main(){
-    println!("Hello VRF");
+    let player_1_card = draw_card().unwrap();
+    let player_2_card = draw_card().unwrap();
+
+    println!("Player 1 card: {}", player_1_card);
+    println!("Player 2 card: {}", player_2_card);
+
+    if player_1_card > player_2_card {
+        println!("Player 1 wins!");
+    } else if player_2_card > player_1_card {
+        println!("Player 2 wins!");
+    } else {
+        println!("It's a tie!");
+    }
+}
+
+fn draw_card() -> Option<u16>{
+    // println!("Hello VRF");
 
     let VRF_seed = &[0u8; 32];
 
@@ -20,21 +36,21 @@ fn main(){
     let mut draw = draws(&keypair, VRF_seed);
     
     let (card, signature)= draw[0];
-    println!("This is your card: {:?}", card);
-    println!("***************************");
-    println!("This is your draw cards (card, signature): {:?}", draw);
-    println!("***************************");
-    println!("This is your signature: {:?}", signature);
-    println!("***************************");
+    // println!("This is your card: {:?}", card);
+    // println!("***************************");
+    // println!("This is your draw cards (card, signature): {:?}", draw);
+    // println!("***************************");
+    // println!("This is your signature: {:?}", signature);
+    // println!("***************************");
     
     // reveal cards we must call receive
 
     let public_key = keypair.public;
 
     let reveal_card = recieve(&public_key, &signature, VRF_seed);
+    // println!("This is the revealed card: {:?}", reveal_card);
 
-    println!("This is the revealed card: {:?}", reveal_card);
-
+    return reveal_card;
 }
 
 /// Processes VRF inputs, checking validity of the number of draws
