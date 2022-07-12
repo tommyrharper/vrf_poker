@@ -58,18 +58,17 @@ fn main() {
     player_1.commit_card(&hash);
     player_2.commit_card(&hash);
 
-    println!("Player 1 card: {:?}", player_1.card);
-    println!("Player 2 card: {:?}", player_2.card);
-
     player_1.reveal_card(&hash);
     player_2.reveal_card(&hash);
 
-    if player_1.revealed_card > player_2.revealed_card {
-        println!("Confirmed - player 1 wins!");
-    } else if player_2.revealed_card > player_1.revealed_card {
-        println!("Confirmed - player 2 wins!");
-    } else {
-        println!("Confirmed - It's a tie!");
+    println!("Player 1 card: {:?}", player_1.revealed_card);
+    println!("Player 2 card: {:?}", player_2.revealed_card);
+
+    match (player_1.revealed_card, player_2.revealed_card) {
+        (Some(card_1), Some(card_2)) if card_1 > card_2 => println!("Confirmed - Player 1 wins!"),
+        (Some(card_1), Some(card_2)) if card_1 < card_2 => println!("Confirmed - Player 2 wins!"),
+        (Some(card_1), Some(card_2)) if card_1 == card_2 => println!("Confirmed - It's a tie!"),
+        _ => panic!("No one won!?!?!"),
     }
 }
 
