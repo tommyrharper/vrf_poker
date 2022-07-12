@@ -41,7 +41,7 @@ impl Player {
         (card, signature)
     }
 
-    fn reveal_card(&mut self,  VRF_seed: &[u8; 32]) -> Option<u16> {
+    fn reveal_card(&mut self, VRF_seed: &[u8; 32]) -> Option<u16> {
         let signature = self.signature.unwrap();
         let reveal_card = recieve(&self.public_key(), &signature, VRF_seed);
         self.revealed_card = reveal_card;
@@ -49,9 +49,25 @@ impl Player {
     }
 }
 
+struct Game<'a> {
+    players: [&'a Player; 2],
+    vrf_seed: [u8; 32],
+}
+
+impl <'a>Game<'a> {
+    fn new(players: [&'a Player; 2]) -> Self {
+        let vrf_seed = create_initial_hash(players[0].public_key(), players[1].public_key());
+        Game {
+            players,
+            vrf_seed,
+        }
+    }
+}
+
 fn main() {
     let mut player_1 = Player::new();
     let mut player_2 = Player::new();
+    let game = Game::new([&player_1, &player_2]);
 
     let hash = create_initial_hash(player_1.public_key(), player_2.public_key());
 
