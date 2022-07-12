@@ -14,9 +14,6 @@ fn main(){
     let (player_1_card, player_1_card_signature) = commit_my_card(&player_1);
     let (player_2_card, player_2_card_signature) = commit_my_card(&player_2);
 
-    // let player_1_card = draw_card(&player_1).unwrap();
-    // let player_2_card = draw_card(&player_2).unwrap();
-
     println!("Player 1 card: {}", player_1_card);
     println!("Player 2 card: {}", player_2_card);
 
@@ -27,6 +24,27 @@ fn main(){
     } else {
         println!("It's a tie!");
     }
+
+    let player_1_checked_card = check_other_players_card(&player_1.public, &player_1_card_signature).unwrap();
+    let player_2_checked_card = check_other_players_card(&player_2.public, &player_2_card_signature).unwrap();
+
+    println!("Confirmed - Player 1 card: {:?}", player_1_checked_card);
+    println!("Confirmed - Player 2 card: {:?}", player_2_checked_card);
+
+    if player_1_checked_card > player_2_checked_card {
+        println!("Confirmed - player 1 wins!");
+    } else if player_2_checked_card > player_1_checked_card {
+        println!("Confirmed - player 2 wins!");
+    } else {
+        println!("Confirmed - It's a tie!");
+    }
+
+}
+
+fn check_other_players_card(public_key: &PublicKey, signature: &[u8; 97]) -> Option<u16>{
+    let VRF_seed = &[0u8; 32];
+    let reveal_card = recieve(public_key, signature, VRF_seed);
+    reveal_card
 }
 
 fn create_player() -> Keypair {
@@ -42,32 +60,6 @@ fn commit_my_card(player: &Keypair) -> (u16, [u8; 97]) {
     let (card, signature)= draw[0];
 
     (card, signature)
-    // println!("card: {}", card);
-
-    // let public_key = player.public;
-
-    // let reveal_card = recieve(&public_key, &signature, VRF_seed);
-    // println!("reveal_card: {:?}", reveal_card);
-
-    // return reveal_card;
-}
-
-fn draw_card(player: &Keypair) -> Option<u16>{
-    let VRF_seed = &[0u8; 32];
-    println!("VRF_seed: {:?}", VRF_seed);
-
-    let mut draw = draws(player, VRF_seed);
-
-    let (card, signature)= draw[0];
-    return Some(card);
-    // println!("card: {}", card);
-
-    // let public_key = player.public;
-
-    // let reveal_card = recieve(&public_key, &signature, VRF_seed);
-    // println!("reveal_card: {:?}", reveal_card);
-
-    // return reveal_card;
 }
 
 /// Processes VRF inputs, checking validity of the number of draws
