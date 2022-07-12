@@ -8,8 +8,10 @@ const NUM_DRAWS : u8 = 8;
 const NUM_CARDS : u16 = 52;
 
 fn main(){
-    let player_1_card = draw_card().unwrap();
-    let player_2_card = draw_card().unwrap();
+    let player_1 = create_player();
+    let player_2 = create_player();
+    let player_1_card = draw_card(&player_1).unwrap();
+    let player_2_card = draw_card(&player_2).unwrap();
 
     println!("Player 1 card: {}", player_1_card);
     println!("Player 2 card: {}", player_2_card);
@@ -23,32 +25,24 @@ fn main(){
     }
 }
 
-fn draw_card() -> Option<u16>{
-    // println!("Hello VRF");
-
-    let VRF_seed = &[0u8; 32];
-
+fn create_player() -> Keypair {
     // call draw calls
 
     let mut csprng = rand_core::OsRng;
     let mut keypair = Keypair::generate_with(&mut csprng);
+    keypair
+}
 
-    let mut draw = draws(&keypair, VRF_seed);
-    
+fn draw_card(player: &Keypair) -> Option<u16>{
+    let VRF_seed = &[0u8; 32];
+
+    let mut draw = draws(player, VRF_seed);
+
     let (card, signature)= draw[0];
-    // println!("This is your card: {:?}", card);
-    // println!("***************************");
-    // println!("This is your draw cards (card, signature): {:?}", draw);
-    // println!("***************************");
-    // println!("This is your signature: {:?}", signature);
-    // println!("***************************");
-    
-    // reveal cards we must call receive
 
-    let public_key = keypair.public;
+    let public_key = player.public;
 
     let reveal_card = recieve(&public_key, &signature, VRF_seed);
-    // println!("This is the revealed card: {:?}", reveal_card);
 
     return reveal_card;
 }
