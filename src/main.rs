@@ -1,7 +1,6 @@
 //! Drawing cards using VRFs
 
 extern crate schnorrkel;
-use hexdisplay::*;
 use merlin::Transcript;
 use schnorrkel::{
     vrf::{VRFInOut, VRFPreOut, VRFProof},
@@ -12,85 +11,73 @@ use sp_core::*;
 const NUM_DRAWS: u8 = 8;
 const NUM_CARDS: u16 = 52;
 
-// struct Player {
-//     keypair: Keypair,
-//     vrf_seed: VRFPreOut,
-//     draw: u16,
-//     signature: [u8; 97],
-// }
+struct Player {
+    keypair: Keypair,
+    card: Option<u16>,
+    pub signature: Option<[u8; 97]>,
+    pub revealed_card: Option<u16>,
+}
 
-// impl Player {
-//     fn new() -> Self {
-//         Player {
-//             keypair: create_player(),
-//             vrf_seed: VRFPreOut::new(),
-//         }
-//     }
-// }
-
-fn main() {
-    let player_1 = create_player();
-    let player_2 = create_player();
-
-    let hash = create_initial_hash(player_1.public, player_2.public);
-
-    let (player_1_card, player_1_card_signature) = commit_my_card(&player_1, &hash);
-    let (player_2_card, player_2_card_signature) = commit_my_card(&player_2, &hash);
-
-    println!("Player 1 card: {}", player_1_card);
-    println!("Player 2 card: {}", player_2_card);
-
-    if player_1_card > player_2_card {
-        println!("Player 1 wins!");
-    } else if player_2_card > player_1_card {
-        println!("Player 2 wins!");
-    } else {
-        println!("It's a tie!");
+impl Player {
+    fn new() -> Self {
+        let mut csprng = rand_core::OsRng;
+        Player {
+            keypair: Keypair::generate_with(&mut csprng),
+            signature: None,
+            card: None,
+            revealed_card: None,
+        }
     }
 
-    let player_1_checked_card =
-        check_other_players_card(&player_1.public, &player_1_card_signature, &hash).unwrap();
-    let player_2_checked_card =
-        check_other_players_card(&player_2.public, &player_2_card_signature, &hash).unwrap();
+    fn public_key(&self) -> &PublicKey {
+        &self.keypair.public
+    }
 
-    println!("Confirmed - Player 1 card: {:?}", player_1_checked_card);
-    println!("Confirmed - Player 2 card: {:?}", player_2_checked_card);
+    fn commit_card(&mut self, VRF_seed: &[u8; 32]) -> (u16, [u8; 97]) {
+        let draw = draws(&self.keypair, VRF_seed);
+        let (card, signature) = draw[0];
+        self.card = Some(card);
+        self.signature = Some(signature);
+        (card, signature)
+    }
 
-    if player_1_checked_card > player_2_checked_card {
+    fn reveal_card(&mut self,  VRF_seed: &[u8; 32]) -> Option<u16> {
+        let signature = self.signature.unwrap();
+        let reveal_card = recieve(&self.public_key(), &signature, VRF_seed);
+        self.revealed_card = reveal_card;
+        reveal_card
+    }
+}
+
+fn main() {
+    let mut player_1 = Player::new();
+    let mut player_2 = Player::new();
+
+    let hash = create_initial_hash(player_1.public_key(), player_2.public_key());
+
+    player_1.commit_card(&hash);
+    player_2.commit_card(&hash);
+
+    println!("Player 1 card: {:?}", player_1.card);
+    println!("Player 2 card: {:?}", player_2.card);
+
+    player_1.reveal_card(&hash);
+    player_2.reveal_card(&hash);
+
+    if player_1.revealed_card > player_2.revealed_card {
         println!("Confirmed - player 1 wins!");
-    } else if player_2_checked_card > player_1_checked_card {
+    } else if player_2.revealed_card > player_1.revealed_card {
         println!("Confirmed - player 2 wins!");
     } else {
         println!("Confirmed - It's a tie!");
     }
 }
 
-fn create_initial_hash(public_key_1: PublicKey, public_key_2: PublicKey) -> [u8; 32] {
+fn create_initial_hash(public_key_1: &PublicKey, public_key_2: &PublicKey) -> [u8; 32] {
     let first_bytes = &public_key_1.to_bytes()[..];
     let second_bytes = &public_key_2.to_bytes()[..];
     let joined_bytes = [first_bytes, second_bytes].concat();
     twox_256(&joined_bytes)
-}
-
-fn check_other_players_card(public_key: &PublicKey, signature: &[u8; 97], hash: &[u8; 32]) -> Option<u16> {
-    let VRF_seed = hash;
-    let reveal_card = recieve(public_key, signature, VRF_seed);
-    reveal_card
-}
-
-fn create_player() -> Keypair {
-    let mut csprng = rand_core::OsRng;
-    let mut keypair = Keypair::generate_with(&mut csprng);
-    keypair
-}
-
-fn commit_my_card(player: &Keypair, hash: &[u8; 32]) -> (u16, [u8; 97]) {
-    let VRF_seed = hash;
-    let mut draw = draws(player, VRF_seed);
-
-    let (card, signature) = draw[0];
-
-    (card, signature)
 }
 
 /// Processes VRF inputs, checking validity of the number of draws
@@ -148,8 +135,6 @@ fn recieve(public: &PublicKey, vrf_signature: &[u8; 97], seed: &[u8; 32]) -> Opt
     let proof = VRFProof::from_bytes(&vrf_signature[32..96]).ok()?;
     // We need not understand the error type here, but someone might
     // care about invalid signatures vs invalid card draws.
-    println!("transcript drawn");
     let (io, _) = public.vrf_verify(t, &out, &proof).ok()?;
-    println!("verified");
     find_card(&io)
 }
