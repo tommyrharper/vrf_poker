@@ -32,12 +32,10 @@ fn main() {
     let player_1 = create_player();
     let player_2 = create_player();
 
-    let seed = create_initial_seed(player_1.public, player_2.public);
-    println!("seed: {:?}", seed.as_bytes());
-    println!("seed length: {:?}", seed.as_bytes().len());
-    
-    let (player_1_card, player_1_card_signature) = commit_my_card(&player_1);
-    let (player_2_card, player_2_card_signature) = commit_my_card(&player_2);
+    let hash = create_initial_hash(player_1.public, player_2.public);
+
+    let (player_1_card, player_1_card_signature) = commit_my_card(&player_1, &hash);
+    let (player_2_card, player_2_card_signature) = commit_my_card(&player_2, &hash);
 
     println!("Player 1 card: {}", player_1_card);
     println!("Player 2 card: {}", player_2_card);
@@ -51,9 +49,9 @@ fn main() {
     }
 
     let player_1_checked_card =
-        check_other_players_card(&player_1.public, &player_1_card_signature).unwrap();
+        check_other_players_card(&player_1.public, &player_1_card_signature, &hash).unwrap();
     let player_2_checked_card =
-        check_other_players_card(&player_2.public, &player_2_card_signature).unwrap();
+        check_other_players_card(&player_2.public, &player_2_card_signature, &hash).unwrap();
 
     println!("Confirmed - Player 1 card: {:?}", player_1_checked_card);
     println!("Confirmed - Player 2 card: {:?}", player_2_checked_card);
@@ -67,15 +65,15 @@ fn main() {
     }
 }
 
-fn create_initial_seed(public_key_1: PublicKey, public_key_2: PublicKey) -> String {
+fn create_initial_hash(public_key_1: PublicKey, public_key_2: PublicKey) -> [u8; 32] {
     let first_bytes = &public_key_1.to_bytes()[..];
     let second_bytes = &public_key_2.to_bytes()[..];
     let joined_bytes = [first_bytes, second_bytes].concat();
-    HexDisplay::from(&twox_128(&joined_bytes)).to_string()
+    twox_256(&joined_bytes)
 }
 
-fn check_other_players_card(public_key: &PublicKey, signature: &[u8; 97]) -> Option<u16> {
-    let VRF_seed = &[0u8; 32];
+fn check_other_players_card(public_key: &PublicKey, signature: &[u8; 97], hash: &[u8; 32]) -> Option<u16> {
+    let VRF_seed = hash;
     let reveal_card = recieve(public_key, signature, VRF_seed);
     reveal_card
 }
@@ -86,8 +84,8 @@ fn create_player() -> Keypair {
     keypair
 }
 
-fn commit_my_card(player: &Keypair) -> (u16, [u8; 97]) {
-    let VRF_seed = &[0u8; 32];
+fn commit_my_card(player: &Keypair, hash: &[u8; 32]) -> (u16, [u8; 97]) {
+    let VRF_seed = hash;
     let mut draw = draws(player, VRF_seed);
 
     let (card, signature) = draw[0];
@@ -150,6 +148,8 @@ fn recieve(public: &PublicKey, vrf_signature: &[u8; 97], seed: &[u8; 32]) -> Opt
     let proof = VRFProof::from_bytes(&vrf_signature[32..96]).ok()?;
     // We need not understand the error type here, but someone might
     // care about invalid signatures vs invalid card draws.
+    println!("transcript drawn");
     let (io, _) = public.vrf_verify(t, &out, &proof).ok()?;
+    println!("verified");
     find_card(&io)
 }
