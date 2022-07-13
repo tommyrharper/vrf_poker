@@ -49,43 +49,55 @@ impl Player {
     }
 }
 
-struct Game<'a> {
-    players: [&'a Player; 2],
+struct Game {
+    players: [Player; 2],
     vrf_seed: [u8; 32],
 }
 
-impl <'a>Game<'a> {
-    fn new(players: [&'a Player; 2]) -> Self {
+impl Game {
+    fn new(players: [Player; 2]) -> Self {
         let vrf_seed = create_initial_hash(players[0].public_key(), players[1].public_key());
-        Game {
-            players,
-            vrf_seed,
+        Game { players, vrf_seed }
+    }
+
+    fn commit_cards(&mut self) {
+        self.players[0].commit_card(&self.vrf_seed);
+        self.players[1].commit_card(&self.vrf_seed);
+    }
+
+    fn reveal_cards(&mut self) {
+        self.players[0].reveal_card(&self.vrf_seed);
+        self.players[1].reveal_card(&self.vrf_seed);
+        self.complete_round();
+    }
+
+    fn complete_round(&self) {
+        let player_1 = &self.players[0];
+        let player_2 = &self.players[1];
+
+        println!("Player 1 card: {:?}", player_1.revealed_card);
+        println!("Player 2 card: {:?}", player_2.revealed_card);
+
+        match (player_1.revealed_card, player_2.revealed_card) {
+            (Some(card_1), Some(card_2)) if card_1 > card_2 => {
+                println!("Confirmed - Player 1 wins!")
+            }
+            (Some(card_1), Some(card_2)) if card_1 < card_2 => {
+                println!("Confirmed - Player 2 wins!")
+            }
+            (Some(card_1), Some(card_2)) if card_1 == card_2 => println!("Confirmed - It's a tie!"),
+            _ => panic!("No one won!?!?!"),
         }
     }
 }
 
 fn main() {
-    let mut player_1 = Player::new();
-    let mut player_2 = Player::new();
-    let game = Game::new([&player_1, &player_2]);
+    let player_1 = Player::new();
+    let player_2 = Player::new();
+    let mut game = Game::new([player_1, player_2]);
 
-    let hash = create_initial_hash(player_1.public_key(), player_2.public_key());
-
-    player_1.commit_card(&hash);
-    player_2.commit_card(&hash);
-
-    player_1.reveal_card(&hash);
-    player_2.reveal_card(&hash);
-
-    println!("Player 1 card: {:?}", player_1.revealed_card);
-    println!("Player 2 card: {:?}", player_2.revealed_card);
-
-    match (player_1.revealed_card, player_2.revealed_card) {
-        (Some(card_1), Some(card_2)) if card_1 > card_2 => println!("Confirmed - Player 1 wins!"),
-        (Some(card_1), Some(card_2)) if card_1 < card_2 => println!("Confirmed - Player 2 wins!"),
-        (Some(card_1), Some(card_2)) if card_1 == card_2 => println!("Confirmed - It's a tie!"),
-        _ => panic!("No one won!?!?!"),
-    }
+    game.commit_cards();
+    game.reveal_cards();
 }
 
 fn create_initial_hash(public_key_1: &PublicKey, public_key_2: &PublicKey) -> [u8; 32] {
