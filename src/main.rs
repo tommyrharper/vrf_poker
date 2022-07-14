@@ -33,17 +33,17 @@ impl Player {
         &self.keypair.public
     }
 
-    fn commit_card(&mut self, VRF_seed: &[u8; 32]) -> (u16, [u8; 97]) {
-        let draw = draws(&self.keypair, VRF_seed);
+    fn commit_card(&mut self, vrf_seed: &[u8; 32]) -> (u16, [u8; 97]) {
+        let draw = draws(&self.keypair, vrf_seed);
         let (card, signature) = draw[0];
         self.card = Some(card);
         self.signature = Some(signature);
         (card, signature)
     }
 
-    fn reveal_card(&mut self, VRF_seed: &[u8; 32]) -> Option<u16> {
+    fn reveal_card(&mut self, vrf_seed: &[u8; 32]) -> Option<u16> {
         let signature = self.signature.unwrap();
-        let reveal_card = recieve(&self.public_key(), &signature, VRF_seed);
+        let reveal_card = recieve(&self.public_key(), &signature, vrf_seed);
         self.revealed_card = reveal_card;
         reveal_card
     }
@@ -88,6 +88,15 @@ impl Game {
             (Some(card_1), Some(card_2)) if card_1 == card_2 => println!("Confirmed - It's a tie!"),
             _ => panic!("No one won!?!?!"),
         }
+    }
+
+    fn update_seed(&mut self) {
+        let mut new_seed = self.vrf_seed;
+        let player_1_card = self.players[0].revealed_card.unwrap();
+        let player_2_card = self.players[0].revealed_card.unwrap();
+        new_seed[0] = player_1_card as u8;
+        new_seed[1] = player_2_card as u8;
+        self.vrf_seed = new_seed;
     }
 }
 
