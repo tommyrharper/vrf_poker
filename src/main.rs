@@ -52,12 +52,19 @@ impl Player {
 struct Game {
     players: [Player; 2],
     vrf_seed: [u8; 32],
+    // TODO: add winner
 }
 
 impl Game {
     fn new(players: [Player; 2]) -> Self {
         let vrf_seed = create_initial_hash(players[0].public_key(), players[1].public_key());
         Game { players, vrf_seed }
+    }
+
+    fn play_round(&mut self) {
+        self.commit_cards();
+        self.reveal_cards();
+        self.update_seed();
     }
 
     fn commit_cards(&mut self) {
@@ -68,10 +75,10 @@ impl Game {
     fn reveal_cards(&mut self) {
         self.players[0].reveal_card(&self.vrf_seed);
         self.players[1].reveal_card(&self.vrf_seed);
-        self.complete_round();
+        self.calculate_winner();
     }
 
-    fn complete_round(&self) {
+    fn calculate_winner(&self) {
         let player_1 = &self.players[0];
         let player_2 = &self.players[1];
 
@@ -105,8 +112,10 @@ fn main() {
     let player_2 = Player::new();
     let mut game = Game::new([player_1, player_2]);
 
-    game.commit_cards();
-    game.reveal_cards();
+    game.play_round();
+    game.play_round();
+    game.play_round();
+    game.play_round();
 }
 
 fn create_initial_hash(public_key_1: &PublicKey, public_key_2: &PublicKey) -> [u8; 32] {
