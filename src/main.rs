@@ -64,6 +64,7 @@ impl Game {
     fn play_round(&mut self) {
         self.commit_cards();
         self.reveal_cards();
+        self.calculate_winner();
         self.update_seed();
     }
 
@@ -75,7 +76,6 @@ impl Game {
     fn reveal_cards(&mut self) {
         self.players[0].reveal_card(&self.vrf_seed);
         self.players[1].reveal_card(&self.vrf_seed);
-        self.calculate_winner();
     }
 
     fn calculate_winner(&self) {
