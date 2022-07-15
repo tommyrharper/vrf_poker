@@ -1,6 +1,7 @@
 //! Drawing cards using VRFs
 
 extern crate schnorrkel;
+
 use merlin::Transcript;
 use schnorrkel::{
     vrf::{VRFInOut, VRFPreOut, VRFProof},
@@ -52,13 +53,17 @@ impl Player {
 struct Game {
     players: [Player; 2],
     vrf_seed: [u8; 32],
-    // TODO: add winner
+    winner: Option<u8>,
 }
 
 impl Game {
     fn new(players: [Player; 2]) -> Self {
         let vrf_seed = create_initial_hash(players[0].public_key(), players[1].public_key());
-        Game { players, vrf_seed }
+        Game {
+            players,
+            vrf_seed,
+            winner: None,
+        }
     }
 
     fn play_round(&mut self) {
@@ -78,7 +83,7 @@ impl Game {
         self.players[1].reveal_card(&self.vrf_seed);
     }
 
-    fn calculate_winner(&self) {
+    fn calculate_winner(&mut self) {
         let player_1 = &self.players[0];
         let player_2 = &self.players[1];
 
@@ -87,13 +92,21 @@ impl Game {
 
         match (player_1.revealed_card, player_2.revealed_card) {
             (Some(card_1), Some(card_2)) if card_1 > card_2 => {
+                self.winner = Some(0);
                 println!("Confirmed - Player 1 wins!")
             }
             (Some(card_1), Some(card_2)) if card_1 < card_2 => {
+                self.winner = Some(1);
                 println!("Confirmed - Player 2 wins!")
             }
-            (Some(card_1), Some(card_2)) if card_1 == card_2 => println!("Confirmed - It's a tie!"),
-            _ => panic!("No one won!?!?!"),
+            (Some(card_1), Some(card_2)) if card_1 == card_2 => {
+                self.winner = None;
+                println!("Confirmed - It's a tie!")
+            }
+            _ => {
+                self.winner = None;
+                panic!("No one won!?!?!")
+            }
         }
     }
 
